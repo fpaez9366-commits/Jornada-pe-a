@@ -274,7 +274,7 @@ const originalRenderAdmin=renderAdmin;renderAdmin=function(){originalRenderAdmin
 
   function buildFormatStore() {
     const store = readJson(FORMAT_KEY, {});
-    const sportNames = Object.keys(sportCatalog || {});
+    const sportNames = Object.keys(sportCatalog || {}).filter((sportName) => sportName !== 'FIFA');
     if (!sportNames.length) return store;
     sportNames.forEach((sportName) => {
       if (!store[sportName]) {
@@ -478,7 +478,7 @@ const originalRenderAdmin=renderAdmin;renderAdmin=function(){originalRenderAdmin
 
   function adminFormatsView() {
     const store = getFormatStore();
-    const sportNames = Object.keys(sportCatalog || {});
+    const sportNames = Object.keys(sportCatalog || {}).filter((sportName) => sportName !== 'FIFA');
     const selectedSport = getCurrentFormatSport();
     const format = store[selectedSport] || buildDefaultFormat(selectedSport);
     const phases = sortPhases(format.phases || []).map((phase, index) => buildPhaseEditor(phase, index)).join('');
@@ -662,8 +662,8 @@ const originalRenderAdmin=renderAdmin;renderAdmin=function(){originalRenderAdmin
       const content = document.getElementById('publicContent');
       if (content) {
         const format = getSportFormat(activeSport);
-        content.innerHTML = activeSport === 'FIFA' && format.published ? renderFifaPublic() : renderCompetitionPublic(activeSport);
-        if (activeSport === 'FIFA' && format.published) bindPublic();
+        content.innerHTML = activeSport === 'FIFA' ? renderFifaPublic() : renderCompetitionPublic(activeSport);
+        if (activeSport === 'FIFA') bindPublic();
       }
       return;
     }
@@ -675,8 +675,8 @@ const originalRenderAdmin=renderAdmin;renderAdmin=function(){originalRenderAdmin
     const content = document.getElementById('publicContent');
     if (content && activeSport) {
       const format = getSportFormat(activeSport);
-      content.innerHTML = activeSport === 'FIFA' && format.published ? renderFifaPublic() : renderCompetitionPublic(activeSport);
-      if (activeSport === 'FIFA' && format.published) bindPublic();
+      content.innerHTML = activeSport === 'FIFA' ? renderFifaPublic() : renderCompetitionPublic(activeSport);
+      if (activeSport === 'FIFA') bindPublic();
       return;
     }
     if (originalSportRender) originalSportRender();
@@ -712,7 +712,6 @@ const originalRenderAdmin=renderAdmin;renderAdmin=function(){originalRenderAdmin
         <div class="panel"><div class="panel-head"><h3>Torneo 1</h3><span class="badge">1° a 3° año</span></div><div class="actions"><button class="btn primary" data-fifa-admin-mode="participants" data-fifa-tournament="t1">Participantes y tablas</button><button class="btn secondary" data-fifa-admin-mode="matches" data-fifa-tournament="t1">Resultados</button></div></div>
         <div class="panel"><div class="panel-head"><h3>Torneo 2</h3><span class="badge">4° a 6° año</span></div><div class="actions"><button class="btn primary" data-fifa-admin-mode="participants" data-fifa-tournament="t2">Participantes y tablas</button><button class="btn secondary" data-fifa-admin-mode="matches" data-fifa-tournament="t2">Resultados</button></div></div>
       </div>
-      <div class="actions" style="margin-top:18px"><button class="btn secondary" data-fifa-admin-mode="formats">Configurar fases FIFA</button></div>
     </div>`;
   }
 
@@ -854,6 +853,47 @@ const originalRenderAdmin=renderAdmin;renderAdmin=function(){originalRenderAdmin
       authenticateAdmin(document.getElementById('entryAdminUser').value, document.getElementById('entryAdminPass').value, document.getElementById('adminEntryError'), () => openApp('admin'));
     };
   }
+})();
+</script>
+<script>
+(() => {
+  const statFields = ['pj', 'pg', 'pe', 'pp', 'gf', 'gc', 'dg', 'pts'];
+  const baseStats = stats;
+  stats = function (t, id) {
+    const calculated = baseStats(t, id);
+    const manual = participant(id)?.manualStats;
+    return manual ? { ...calculated, ...manual } : calculated;
+  };
+  groupParticipants = function (t, key) {
+    return t.groups[key].map(id => participant(id)).filter(Boolean).sort((a, b) => {
+      const left = stats(t, a.id);
+      const right = stats(t, b.id);
+      return right.pts - left.pts || right.pg - left.pg || right.pe - left.pe || left.pp - right.pp || right.gf - left.gf || left.gc - right.gc || right.dg - left.dg;
+    });
+  };
+
+  const baseOpenParticipant = openParticipant;
+  openParticipant = function (id) {
+    baseOpenParticipant(id);
+    const form = document.getElementById('participantForm');
+    if (!form) return;
+    const currentStats = id ? stats(current(), id) : { pj: 0, pg: 0, pe: 0, pp: 0, gf: 0, gc: 0, dg: 0, pts: 0 };
+    const fields = statFields.map(field => `<div class="field"><label>${field.toUpperCase()}</label><input id="stat-${field}" type="number" min="0" value="${Number(currentStats[field] || 0)}"></div>`).join('');
+    form.querySelector('.modal-foot').insertAdjacentHTML('beforebegin', `<div class="field full"><label>Estadísticas de la tabla</label><div class="form-grid">${fields}</div><small class="muted">PTS es el criterio principal. Luego se aplican los desempates automáticamente.</small></div>`);
+    const originalSubmit = form.onsubmit;
+    form.onsubmit = event => {
+      const edited = {};
+      statFields.forEach(field => edited[field] = Number(document.getElementById(`stat-${field}`).value || 0));
+      const participantName = document.getElementById('pName').value.trim();
+      if (id) participant(id).manualStats = edited;
+      originalSubmit(event);
+      if (!id) {
+        const created = current().participants.find(item => item.name === participantName);
+        if (created) created.manualStats = edited;
+        saveData();
+      }
+    };
+  };
 })();
 </script>
 </body></html>
