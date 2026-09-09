@@ -17,21 +17,21 @@ body.home-view{background-image:linear-gradient(90deg,rgba(6,14,29,.97) 0%,rgba(
 <body>
 <div class="app"><aside><div class="brand"><div class="brand-mark">FC</div><div><strong>FC 26</strong><small>Campeonato estudiantil</small></div></div><nav><button class="nav-item active" data-view="home"><span>Inicio</span><span>01</span></button><button class="nav-item" data-view="tournaments"><span>Torneos</span><span>02</span></button><button class="nav-item" data-view="admin"><span>Administrador</span><span>03</span></button></nav><div class="side-foot">ESTADO DEL SISTEMA<br><b>Datos locales activos</b><br><br>Los visitantes solo pueden consultar la información publicada.</div></aside>
 <main><div class="topbar"><span>CAMPEONATO ESTUDIANTIL / TEMPORADA 2026</span><span class="session"><i class="dot"></i><b id="roleLabel">MODO VISITANTE</b></span></div>
-<section id="homeView" class="view"><div class="hero"><div class="eyebrow">Torneo oficial · 2 vs 2</div><h1>El juego<br><em>empieza</em><br>acá.</h1><p>Seguimiento en vivo del Campeonato Estudiantil de FIFA FC 26. Consultá tablas, resultados, clasificación y la final al mejor de tres.</p></div><div class="tournament-grid"><article class="panel tourney-card" data-open-tournament="t1"><span class="card-number">TORNEO 01</span><h2>1°, 2° y 3° año</h2><p>Fase de grupos · Mini Liga · Final</p></article><article class="panel tourney-card" data-open-tournament="t2"><span class="card-number">TORNEO 02</span><h2>4°, 5° y 6° año</h2><p>Fase de grupos · Mini Liga · Final</p></article></div><div class="home-grid" style="margin-top:18px"><div class="panel"><div class="panel-head"><h2>Estado del campeonato</h2><span class="badge">En preparación</span></div><div class="stat-grid"><div class="stat"><strong id="homeTeams">0</strong><span>Participantes</span></div><div class="stat"><strong id="homeMatches">0</strong><span>Partidos cargados</span></div><div class="stat"><strong id="homeChampions">0</strong><span>Campeones</span></div><div class="stat"><strong>2×2</strong><span>Formato</span></div></div></div><div class="panel"><div class="panel-head"><h2>Acceso</h2></div><p class="phase-note">La información pública no requiere cuenta. El panel de administración está protegido para que solamente el responsable pueda modificar datos y resultados.</p><button class="btn secondary" data-view="admin">Acceso administrador →</button></div></div></section>
+<section id="homeView" class="view"><div class="hero" style="min-height: 280px; display: grid; place-items: center; text-align: center;"><h1 style="font-size: clamp(58px, 8vw, 110px); margin: 0;">La Promo2026<br><em>es la mejor</em></h1><span id="homeTeams" hidden></span><span id="homeMatches" hidden></span><span id="homeChampions" hidden></span></div></section>
 <section id="tournamentsView" class="view hidden"><div class="view-title"><div><div class="eyebrow">Información pública</div><h1 id="publicTitle">Torneos</h1></div><div class="actions"><button class="btn secondary" data-view="home">← Inicio</button></div></div><div id="publicContent"></div></section>
 <section id="adminView" class="view hidden"><div id="adminContent"></div></section></main></div><div id="modalRoot"></div><div id="toastRoot"></div>
 <a class="promo-link" href="#homeView" aria-label="Promo 2026">PROMO 2026</a>
 <script>
 const STORAGE_KEY='fc26-tournament-v1';const emptyTournament=(name,years)=>({name,years,participants:[],groups:{A:[],B:[],C:[]},groupMatches:[],leagueMatches:[],final:{teams:[],games:[]},champion:null});const defaultData={t1:emptyTournament('Torneo 1',['1° Año','2° Año','3° Año']),t2:emptyTournament('Torneo 2',['4° Año','5° Año','6° Año'])};let data=loadData(),isAdmin=sessionStorage.getItem('fc26-admin')==='1',currentTournament='t1',publicPhase='groups',adminSection='overview',editingId=null,pendingImage='';function loadData(){try{return {...defaultData,...JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}')}}catch{return defaultData}}function saveData(){localStorage.setItem(STORAGE_KEY,JSON.stringify(data))}function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}function uid(){return'p'+Date.now().toString(36)+Math.random().toString(36).slice(2,6)}function current(){return data[currentTournament]}function participant(id){return current().participants.find(p=>p.id===id)}function crest(p){return p&&p.image?`<img class="crest" src="${p.image}" alt="Escudo de ${esc(p.club)}">`:'<span class="crest empty">+</span>'}function stats(t,id){let s={pj:0,pg:0,pe:0,pp:0,gf:0,gc:0,pts:0};t.groupMatches.filter(m=>m.a===id||m.b===id).forEach(m=>{if(m.status==='pending')return;let home=m.a===id,gf=home?m.ga:m.gb,gc=home?m.gb:m.ga;s.pj++;s.gf+=gf;s.gc+=gc;if(gf>gc){s.pg++;s.pts+=3}else if(gf===gc){s.pe++;s.pts++}else s.pp++});s.dg=s.gf-s.gc;return s}function groupParticipants(t,key){return t.groups[key].map(id=>participant(id)).filter(Boolean).sort((a,b)=>{let x=stats(t,a.id),y=stats(t,b.id);return y.pts-x.pts||y.dg-x.dg||y.gf-x.gf})}function allMatches(t){return[...t.groupMatches,...t.leagueMatches,...(t.final.games||[])]}function show(view){document.querySelectorAll('.view').forEach(v=>v.classList.toggle('hidden',v.id!==view+'View'));document.querySelectorAll('.nav-item').forEach(b=>b.classList.toggle('active',b.dataset.view===view));if(view==='home')renderHome();if(view==='tournaments')renderPublic();if(view==='admin')renderAdmin()}function renderHome(){document.getElementById('roleLabel').textContent=isAdmin?'MODO ADMINISTRADOR':'MODO VISITANTE';let teams=data.t1.participants.length+data.t2.participants.length;document.getElementById('homeTeams').textContent=teams;document.getElementById('homeMatches').textContent=allMatches(data.t1).concat(allMatches(data.t2)).filter(m=>m.status==='played').length;document.getElementById('homeChampions').textContent=[data.t1.champion,data.t2.champion].filter(Boolean).length}function publicTabs(){return`<div class="tabs"><button class="tab ${publicPhase==='groups'?'active':''}" data-phase="groups">Fase 1 · Grupos</button><button class="tab ${publicPhase==='league'?'active':''}" data-phase="league">Fase 2 · Mini Liga</button><button class="tab ${publicPhase==='final'?'active':''}" data-phase="final">Final</button></div>`}function renderPublic(){let t=current();document.getElementById('publicTitle').textContent=t.name;document.getElementById('publicContent').innerHTML=`<div class="tabs"><button class="tab ${currentTournament==='t1'?'active':''}" data-tourney="t1">Torneo 1 · 1° a 3°</button><button class="tab ${currentTournament==='t2'?'active':''}" data-tourney="t2">Torneo 2 · 4° a 6°</button></div>${publicTabs()}<div id="publicPhaseContent">${publicPhase==='groups'?renderGroups(t):publicPhase==='league'?renderLeague(t):renderFinal(t)}</div>`;bindPublic()}function renderGroups(t){if(!t.participants.length)return`<div class="empty"><strong>Participantes por definir</strong>El administrador todavía no cargó duplas para este torneo.</div>`;return`<div class="tournament-grid">${['A','B','C'].map(g=>`<div class="panel"><div class="panel-head"><h2>Tabla ${g}</h2><span class="badge">${groupParticipants(t,g).length} equipos</span></div>${tableHtml(t,groupParticipants(t,g))}</div>`).join('')}</div><div class="panel" style="margin-top:18px"><div class="panel-head"><h2>Resultados de grupos</h2><span class="muted">Victoria 3 · Empate 1 · Derrota 0</span></div>${matchesHtml(t,t.groupMatches)}</div>`}function tableHtml(t,items){if(!items.length)return'<div class="empty">Sin participantes asignados.</div>';return`<div class="table-wrap"><table class="standings"><thead><tr><th>#</th><th>Equipo</th><th>PJ</th><th>PG</th><th>PE</th><th>PP</th><th>GF</th><th>GC</th><th>DG</th><th>PTS</th></tr></thead><tbody>${items.map((p,i)=>{let s=stats(t,p.id);return`<tr><td class="${i===0?'qualify':''}">${i+1}</td><td><div class="team-cell">${crest(p)}<span><b>${esc(p.name)}</b><small class="muted">${esc(p.course)} ${p.division?'· '+esc(p.division):''} · ${esc(p.club)||'Club pendiente'}</small></span></div></td><td>${s.pj}</td><td>${s.pg}</td><td>${s.pe}</td><td>${s.pp}</td><td>${s.gf}</td><td>${s.gc}</td><td>${s.dg}</td><td><b>${s.pts}</b></td></tr>`}).join('')}</tbody></table></div>`}function matchesHtml(t,matches){if(!matches.length)return'<div class="empty">Todavía no hay partidos cargados.</div>';return`<div class="match-list">${matches.map(m=>{let a=participant(m.a),b=participant(m.b);return`<div class="match"><div class="match-team">${crest(a)}<span>${esc(a?.name||'Equipo pendiente')}</span></div><div class="match-score">${m.status==='played'?`${m.ga} <small>-</small> ${m.gb}`:'VS'}<br><small>${m.status==='played'?(m.default?'DEFAULT':'FINAL'):'PENDIENTE'}</small></div><div class="match-team">${crest(b)}<span>${esc(b?.name||'Equipo pendiente')}</span></div></div>`}).join('')}</div>`}function qualified(t){return['A','B','C'].map(g=>groupParticipants(t,g)[0]).filter(Boolean)}function leagueMatches(t){let q=qualified(t);return q.length<3?[]:[{id:'l1',a:q[0].id,b:q[1].id},{id:'l2',a:q[0].id,b:q[2].id},{id:'l3',a:q[1].id,b:q[2].id}].map(base=>t.leagueMatches.find(m=>m.id===base.id)||{...base,status:'pending',ga:0,gb:0})}function renderLeague(t){let q=qualified(t);if(q.length<3)return`<div class="empty"><strong>Fase 2 pendiente</strong>Se necesitan los primeros de Tabla A, B y C para formar la mini liga.</div>`;let matches=leagueMatches(t),rows=q.map(p=>{let s=stats(t,p.id);return{...p,pts:s.pts}}).sort((a,b)=>b.pts-a.pts);return`<div class="two-col"><div class="panel"><div class="panel-head"><h2>Mini Liga</h2><span class="badge">Clasifican 2</span></div><p class="phase-note">Clasificados automáticamente desde la Fase 1: primeros de las Tablas A, B y C.</p>${matchesHtml(t,matches)}</div><div class="panel"><div class="panel-head"><h2>Posiciones</h2></div>${tableHtml(t,rows)}</div></div>`}function renderFinal(t){let q=qualified(t),finalTeams=t.final.teams.length?t.final.teams:q.slice(0,2);if(finalTeams.length<2)return`<div class="empty"><strong>Final pendiente</strong>Los dos primeros de la Mini Liga aparecerán aquí automáticamente.</div>`;let wins={};(t.final.games||[]).forEach(g=>{if(g.status==='played')wins[g.ga>g.gb?g.a:g.b]=(wins[g.ga>g.gb?g.a:g.b]||0)+1});let champ=Object.keys(wins).find(id=>wins[id]>=2);return`${champ?`<div class="champion">${crest(participant(champ))}<h2>Campeón del torneo</h2><p>${esc(participant(champ)?.name)} · ${esc(participant(champ)?.course)} · ${esc(participant(champ)?.club)}</p></div>`:''}<div class="panel" style="margin-top:18px"><div class="panel-head"><h2>Final · Mejor de 3</h2><span class="badge">${champ?'Finalizada':'En disputa'}</span></div><div class="two-col"><div>${finalTeams.map(p=>`<div class="match-team" style="margin:14px 0;font-size:15px">${crest(p)}<span>${esc(p.name)}<small class="muted">${esc(p.club)}</small></span></div>`).join('')}</div><div>${matchesHtml(t,t.final.games||[])}</div></div></div>`}function bindPublic(){document.querySelectorAll('[data-tourney]').forEach(b=>b.onclick=()=>{currentTournament=b.dataset.tourney;renderPublic()});document.querySelectorAll('[data-phase]').forEach(b=>b.onclick=()=>{publicPhase=b.dataset.phase;renderPublic()})}
-function renderAdmin(){if(!isAdmin){document.getElementById('adminContent').innerHTML=`<div class="login panel"><div class="eyebrow">Zona restringida</div><h1>Acceso<br><em>admin</em></h1><p class="phase-note">Ingresá las credenciales del responsable del campeonato. Los visitantes no pueden modificar información.</p><form id="loginForm"><div class="field"><label>Usuario</label><input id="loginUser" autocomplete="username" required></div><div class="field" style="margin-top:12px"><label>Contraseña</label><input id="loginPass" type="password" autocomplete="current-password" required></div><div class="actions" style="margin-top:18px"><button class="btn primary">Ingresar</button><button type="button" class="btn secondary" data-view="home">Cancelar</button></div><p id="loginError" class="error"></p></form></div>`;document.getElementById('loginForm').onsubmit=login;return}document.getElementById('adminContent').innerHTML=`<div class="view-title"><div><div class="eyebrow">Control total del campeonato</div><h1>Panel admin</h1></div><button class="btn secondary" id="logoutBtn">Cerrar sesión</button></div><div class="tabs"><button class="tab ${adminSection==='overview'?'active':''}" data-admin="overview">Resumen</button><button class="tab ${adminSection==='participants'?'active':''}" data-admin="participants">Participantes</button><button class="tab ${adminSection==='matches'?'active':''}" data-admin="matches">Resultados</button></div><div id="adminSectionContent">${adminSection==='overview'?adminOverview():adminSection==='participants'?adminParticipants():adminMatches()}</div>`;document.querySelectorAll('[data-admin]').forEach(b=>b.onclick=()=>{adminSection=b.dataset.admin;renderAdmin()});document.getElementById('logoutBtn').onclick=()=>{isAdmin=false;sessionStorage.removeItem('fc26-admin');show('home')};bindAdmin()}function login(e){e.preventDefault();if(document.getElementById('loginUser').value==='admin'&&document.getElementById('loginPass').value==='fc26-admin'){isAdmin=true;sessionStorage.setItem('fc26-admin','1');adminSection='overview';renderAdmin()}else document.getElementById('loginError').textContent='Usuario o contraseña incorrectos.'}function adminOverview(){return`<div class="tournament-grid">${['t1','t2'].map(k=>{let t=data[k];return`<div class="panel"><div class="panel-head"><h2>${t.name}</h2><span class="badge">${t.participants.length} equipos</span></div><p class="phase-note">${t.years.join(' · ')}<br>${t.groupMatches.filter(m=>m.status==='played').length} resultados cargados · ${t.champion?'Campeón definido':'Sin campeón todavía'}</p><div class="actions"><button class="btn primary" data-manage="${k}">Gestionar torneo</button><button class="btn danger" data-reset="${k}">Reiniciar</button></div></div>`}).join('')}</div><div class="panel" style="margin-top:18px"><div class="panel-head"><h2>Reglas activas</h2></div><p class="phase-note">Puntuación automática: victoria 3 puntos, empate 1, derrota 0. Desempate: puntos, diferencia de goles y goles a favor. Los puntos y posiciones se calculan desde los resultados guardados.</p></div>`}function adminParticipants(){let t=current();return`<div class="admin-bar"><strong>${t.name}</strong><div class="actions"><button class="btn primary" id="addParticipant">+ Agregar participante</button><button class="btn secondary" data-switch-t="${currentTournament==='t1'?'t2':'t1'}">Ver ${currentTournament==='t1'?'Torneo 2':'Torneo 1'}</button></div></div><div class="panel"><div class="panel-head"><h2>Participantes</h2><span class="muted">Asigná cada dupla a una tabla</span></div><div class="participant-list">${t.participants.length?t.participants.map(p=>`<div class="participant"><div class="participant-info">${crest(p)}<div><strong>${esc(p.name)} <span class="badge">Tabla ${groupOf(t,p.id)||'sin asignar'}</span></strong><small>${esc(p.course)} ${p.division?'· '+esc(p.division):''} · ${esc(p.club)||'Club pendiente'} · Sorteo ${esc(p.number)||'—'}</small></div></div><div class="small-actions"><button class="btn secondary" data-edit="${p.id}">Editar</button><button class="btn danger" data-delete="${p.id}">Eliminar</button></div></div>`).join(''):'<div class="empty"><strong>Lista vacía</strong>Agregá las duplas cuando estén definidas.</div>'}</div></div>`}function groupOf(t,id){return Object.keys(t.groups).find(k=>t.groups[k].includes(id))}function adminMatches(){let t=current(),options=t.participants.map(p=>`<option value="${p.id}">${esc(p.name)} · ${esc(p.club)}</option>`).join('');return`<div class="admin-bar"><strong>${t.name}</strong><button class="btn secondary" data-switch-t="${currentTournament==='t1'?'t2':'t1'}">Ver ${currentTournament==='t1'?'Torneo 2':'Torneo 1'}</button></div><div class="two-col"><div class="panel"><div class="panel-head"><h2>Cargar resultado</h2><span class="badge">Actualiza estadísticas</span></div>${t.participants.length>=2?`<form id="matchForm"><div class="form-grid"><div class="field"><label>Equipo A</label><select id="matchA" required>${options}</select></div><div class="field"><label>Equipo B</label><select id="matchB" required>${options}</select></div><div class="field"><label>Goles A</label><input id="goalsA" type="number" min="0" value="0" required></div><div class="field"><label>Goles B</label><input id="goalsB" type="number" min="0" value="0" required></div><div class="field full"><label>Fase</label><select id="matchPhase"><option value="groups">Fase 1 · Grupos</option><option value="league">Fase 2 · Mini Liga</option><option value="final">Final · Partido de serie</option></select></div></div><label style="display:flex;gap:8px;align-items:center;color:var(--muted);font-size:11px;margin:15px 0"><input id="defaultWin" type="checkbox"> Victoria por default (3-0)</label><button class="btn primary">Guardar resultado</button><p id="matchError" class="error"></p></form>`:'<div class="empty">Agregá al menos dos participantes para cargar resultados.</div>'}</div><div class="panel"><div class="panel-head"><h2>Historial de grupos</h2></div>${matchesHtml(t,t.groupMatches)}</div></div>`}function bindAdmin(){document.querySelectorAll('[data-manage]').forEach(b=>b.onclick=()=>{currentTournament=b.dataset.manage;adminSection='participants';renderAdmin()});document.querySelectorAll('[data-switch-t]').forEach(b=>b.onclick=()=>{currentTournament=b.dataset.switchT;renderAdmin()});document.querySelectorAll('[data-reset]').forEach(b=>b.onclick=()=>{if(confirm('¿Reiniciar este torneo y eliminar participantes y resultados?')){data[b.dataset.reset]=emptyTournament(data[b.dataset.reset].name,data[b.dataset.reset].years);saveData();renderAdmin();toast('Torneo reiniciado')}});document.getElementById('addParticipant')?.addEventListener('click',()=>openParticipant());document.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>openParticipant(b.dataset.edit));document.querySelectorAll('[data-delete]').forEach(b=>b.onclick=()=>deleteParticipant(b.dataset.delete));document.getElementById('matchForm')?.addEventListener('submit',saveMatch);document.getElementById('defaultWin')?.addEventListener('change',e=>{if(e.target.checked){document.getElementById('goalsA').value=3;document.getElementById('goalsB').value=0}})}function openParticipant(id){editingId=id||null;let p=id?participant(id):{name:'',course:'',division:'',club:'',number:'',image:''};document.getElementById('modalRoot').innerHTML=`<div class="modal-backdrop"><div class="modal"><h2>${id?'Editar':'Agregar'} participante</h2><form id="participantForm"><div class="form-grid"><div class="field full"><label>Nombre de la dupla</label><input id="pName" value="${esc(p.name)}" required></div><div class="field"><label>Curso</label><input id="pCourse" value="${esc(p.course)}" placeholder="Ej. 6° Año" required></div><div class="field"><label>División</label><input id="pDivision" value="${esc(p.division)}" placeholder="Ej. A"></div><div class="field"><label>Club</label><input id="pClub" value="${esc(p.club)}" placeholder="Club a definir"></div><div class="field"><label>Número sorteado</label><input id="pNumber" value="${esc(p.number)}" type="number" min="1"></div><div class="field"><label>Tabla de Fase 1</label><select id="pGroup"><option value="">Sin asignar</option>${['A','B','C'].map(g=>`<option ${groupOf(current(),p.id)===g?'selected':''} value="${g}">Tabla ${g}</option>`).join('')}</select></div><div class="field"><label>Imagen / escudo</label><input id="pImage" type="file" accept="image/png,image/jpeg,image/webp"><span class="file-note">PNG, JPG, JPEG o WEBP. Se guarda localmente.</span></div></div><div id="imagePreview">${p.image?`<img class="preview" src="${p.image}" alt="Vista previa">`:''}</div><div class="modal-foot"><button type="button" class="btn secondary" id="closeModal">Cancelar</button><button class="btn primary">Guardar participante</button></div></form></div></div>`;document.getElementById('closeModal').onclick=closeModal;document.getElementById('pImage').onchange=previewImage;document.getElementById('participantForm').onsubmit=saveParticipant}function previewImage(e){let file=e.target.files[0];if(!file)return;if(file.size>2*1024*1024){toast('La imagen debe pesar menos de 2 MB');return}let reader=new FileReader();reader.onload=()=>{pendingImage=reader.result;document.getElementById('imagePreview').innerHTML=`<img class="preview" src="${pendingImage}" alt="Vista previa">`};reader.readAsDataURL(file)}function saveParticipant(e){e.preventDefault();let t=current(),p=editingId?participant(editingId):{id:uid()};p.name=document.getElementById('pName').value.trim();p.course=document.getElementById('pCourse').value.trim();p.division=document.getElementById('pDivision').value.trim();p.club=document.getElementById('pClub').value.trim();p.number=document.getElementById('pNumber').value.trim();if(pendingImage)p.image=pendingImage;if(!editingId)t.participants.push(p);Object.keys(t.groups).forEach(g=>t.groups[g]=t.groups[g].filter(id=>id!==p.id));let group=document.getElementById('pGroup').value;if(group)t.groups[group].push(p.id);saveData();pendingImage='';closeModal();renderAdmin();toast('Participante guardado')}function deleteParticipant(id){if(!confirm('¿Eliminar este participante?'))return;let t=current();t.participants=t.participants.filter(p=>p.id!==id);Object.keys(t.groups).forEach(g=>t.groups[g]=t.groups[g].filter(x=>x!==id));t.groupMatches=t.groupMatches.filter(m=>m.a!==id&&m.b!==id);saveData();renderAdmin();toast('Participante eliminado')}function closeModal(){document.getElementById('modalRoot').innerHTML='';pendingImage='';editingId=null}function saveMatch(e){e.preventDefault();let t=current(),a=document.getElementById('matchA').value,b=document.getElementById('matchB').value;if(a===b){document.getElementById('matchError').textContent='Elegí dos equipos diferentes.';return}let phase=document.getElementById('matchPhase').value,m={id:uid(),a,b,ga:Number(document.getElementById('goalsA').value),gb:Number(document.getElementById('goalsB').value),status:'played',default:document.getElementById('defaultWin').checked},target=phase==='groups'?t.groupMatches:phase==='league'?t.leagueMatches:t.final.games;target.push(m);saveData();renderAdmin();toast('Resultado guardado y estadísticas actualizadas')}function toast(message){document.getElementById('toastRoot').innerHTML=`<div class="toast">${esc(message)}</div>`;setTimeout(()=>document.getElementById('toastRoot').innerHTML='',2800)}document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>show(b.dataset.view));document.querySelectorAll('[data-open-tournament]').forEach(b=>b.onclick=()=>{currentTournament=b.dataset.openTournament;publicPhase='groups';show('tournaments')});renderHome();
+function renderAdmin(){if(!isAdmin){document.getElementById('adminContent').innerHTML=`<div class="login panel"><div class="eyebrow">Zona restringida</div><h1>Acceso<br><em>admin</em></h1><p class="phase-note">Ingresá las credenciales del responsable del campeonato. Los visitantes no pueden modificar información.</p><form id="loginForm"><div class="field"><label>Usuario</label><input id="loginUser" autocomplete="username" required></div><div class="field" style="margin-top:12px"><label>Contraseña</label><input id="loginPass" type="password" autocomplete="current-password" required></div><div class="actions" style="margin-top:18px"><button class="btn primary">Ingresar</button><button type="button" class="btn secondary" data-view="home">Cancelar</button></div><p id="loginError" class="error"></p></form></div>`;document.getElementById('loginForm').onsubmit=login;return}document.getElementById('adminContent').innerHTML=`<div class="view-title"><div><div class="eyebrow">Control total del campeonato</div><h1>Panel admin</h1></div><button class="btn secondary" id="logoutBtn">Cerrar sesión</button></div><div class="tabs"><button class="tab ${adminSection==='overview'?'active':''}" data-admin="overview">Resumen</button><button class="tab ${adminSection==='participants'?'active':''}" data-admin="participants">Participantes</button><button class="tab ${adminSection==='matches'?'active':''}" data-admin="matches">Resultados</button></div><div id="adminSectionContent">${adminSection==='overview'?adminOverview():adminSection==='participants'?adminParticipants():adminMatches()}</div>`;document.querySelectorAll('[data-admin]').forEach(b=>b.onclick=()=>{adminSection=b.dataset.admin;renderAdmin()});document.getElementById('logoutBtn').onclick=()=>{isAdmin=false;sessionStorage.removeItem('fc26-admin');show('home')};bindAdmin()}function login(e){e.preventDefault();if(document.getElementById('loginUser').value==='Promo2026'&&document.getElementById('loginPass').value==='Jordana2026'){isAdmin=true;sessionStorage.setItem('fc26-admin','1');adminSection='overview';renderAdmin()}else document.getElementById('loginError').textContent='Usuario o contraseña incorrectos.'}function adminOverview(){return`<div class="tournament-grid">${['t1','t2'].map(k=>{let t=data[k];return`<div class="panel"><div class="panel-head"><h2>${t.name}</h2><span class="badge">${t.participants.length} equipos</span></div><p class="phase-note">${t.years.join(' · ')}<br>${t.groupMatches.filter(m=>m.status==='played').length} resultados cargados · ${t.champion?'Campeón definido':'Sin campeón todavía'}</p><div class="actions"><button class="btn primary" data-manage="${k}">Gestionar torneo</button><button class="btn danger" data-reset="${k}">Reiniciar</button></div></div>`}).join('')}</div><div class="panel" style="margin-top:18px"><div class="panel-head"><h2>Reglas activas</h2></div><p class="phase-note">Puntuación automática: victoria 3 puntos, empate 1, derrota 0. Desempate: puntos, diferencia de goles y goles a favor. Los puntos y posiciones se calculan desde los resultados guardados.</p></div>`}function adminParticipants(){let t=current();return`<div class="admin-bar"><strong>${t.name}</strong><div class="actions"><button class="btn primary" id="addParticipant">+ Agregar participante</button><button class="btn secondary" data-switch-t="${currentTournament==='t1'?'t2':'t1'}">Ver ${currentTournament==='t1'?'Torneo 2':'Torneo 1'}</button></div></div><div class="panel"><div class="panel-head"><h2>Participantes</h2><span class="muted">Asigná cada dupla a una tabla</span></div><div class="participant-list">${t.participants.length?t.participants.map(p=>`<div class="participant"><div class="participant-info">${crest(p)}<div><strong>${esc(p.name)} <span class="badge">Tabla ${groupOf(t,p.id)||'sin asignar'}</span></strong><small>${esc(p.course)} ${p.division?'· '+esc(p.division):''} · ${esc(p.club)||'Club pendiente'} · Sorteo ${esc(p.number)||'—'}</small></div></div><div class="small-actions"><button class="btn secondary" data-edit="${p.id}">Editar</button><button class="btn danger" data-delete="${p.id}">Eliminar</button></div></div>`).join(''):'<div class="empty"><strong>Lista vacía</strong>Agregá las duplas cuando estén definidas.</div>'}</div></div>`}function groupOf(t,id){return Object.keys(t.groups).find(k=>t.groups[k].includes(id))}function adminMatches(){let t=current(),options=t.participants.map(p=>`<option value="${p.id}">${esc(p.name)} · ${esc(p.club)}</option>`).join('');return`<div class="admin-bar"><strong>${t.name}</strong><button class="btn secondary" data-switch-t="${currentTournament==='t1'?'t2':'t1'}">Ver ${currentTournament==='t1'?'Torneo 2':'Torneo 1'}</button></div><div class="two-col"><div class="panel"><div class="panel-head"><h2>Cargar resultado</h2><span class="badge">Actualiza estadísticas</span></div>${t.participants.length>=2?`<form id="matchForm"><div class="form-grid"><div class="field"><label>Equipo A</label><select id="matchA" required>${options}</select></div><div class="field"><label>Equipo B</label><select id="matchB" required>${options}</select></div><div class="field"><label>Goles A</label><input id="goalsA" type="number" min="0" value="0" required></div><div class="field"><label>Goles B</label><input id="goalsB" type="number" min="0" value="0" required></div><div class="field full"><label>Fase</label><select id="matchPhase"><option value="groups">Fase 1 · Grupos</option><option value="league">Fase 2 · Mini Liga</option><option value="final">Final · Partido de serie</option></select></div></div><label style="display:flex;gap:8px;align-items:center;color:var(--muted);font-size:11px;margin:15px 0"><input id="defaultWin" type="checkbox"> Victoria por default (3-0)</label><button class="btn primary">Guardar resultado</button><p id="matchError" class="error"></p></form>`:'<div class="empty">Agregá al menos dos participantes para cargar resultados.</div>'}</div><div class="panel"><div class="panel-head"><h2>Historial de grupos</h2></div>${matchesHtml(t,t.groupMatches)}</div></div>`}function bindAdmin(){document.querySelectorAll('[data-manage]').forEach(b=>b.onclick=()=>{currentTournament=b.dataset.manage;adminSection='participants';renderAdmin()});document.querySelectorAll('[data-switch-t]').forEach(b=>b.onclick=()=>{currentTournament=b.dataset.switchT;renderAdmin()});document.querySelectorAll('[data-reset]').forEach(b=>b.onclick=()=>{if(confirm('¿Reiniciar este torneo y eliminar participantes y resultados?')){data[b.dataset.reset]=emptyTournament(data[b.dataset.reset].name,data[b.dataset.reset].years);saveData();renderAdmin();toast('Torneo reiniciado')}});document.getElementById('addParticipant')?.addEventListener('click',()=>openParticipant());document.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>openParticipant(b.dataset.edit));document.querySelectorAll('[data-delete]').forEach(b=>b.onclick=()=>deleteParticipant(b.dataset.delete));document.getElementById('matchForm')?.addEventListener('submit',saveMatch);document.getElementById('defaultWin')?.addEventListener('change',e=>{if(e.target.checked){document.getElementById('goalsA').value=3;document.getElementById('goalsB').value=0}})}function openParticipant(id){editingId=id||null;let p=id?participant(id):{name:'',course:'',division:'',club:'',number:'',image:''};document.getElementById('modalRoot').innerHTML=`<div class="modal-backdrop"><div class="modal"><h2>${id?'Editar':'Agregar'} participante</h2><form id="participantForm"><div class="form-grid"><div class="field full"><label>Nombre de la dupla</label><input id="pName" value="${esc(p.name)}" required></div><div class="field"><label>Curso</label><input id="pCourse" value="${esc(p.course)}" placeholder="Ej. 6° Año" required></div><div class="field"><label>División</label><input id="pDivision" value="${esc(p.division)}" placeholder="Ej. A"></div><div class="field"><label>Club</label><input id="pClub" value="${esc(p.club)}" placeholder="Club a definir"></div><div class="field"><label>Número sorteado</label><input id="pNumber" value="${esc(p.number)}" type="number" min="1"></div><div class="field"><label>Tabla de Fase 1</label><select id="pGroup"><option value="">Sin asignar</option>${['A','B','C'].map(g=>`<option ${groupOf(current(),p.id)===g?'selected':''} value="${g}">Tabla ${g}</option>`).join('')}</select></div><div class="field"><label>Imagen / escudo</label><input id="pImage" type="file" accept="image/png,image/jpeg,image/webp"><span class="file-note">PNG, JPG, JPEG o WEBP. Se guarda localmente.</span></div></div><div id="imagePreview">${p.image?`<img class="preview" src="${p.image}" alt="Vista previa">`:''}</div><div class="modal-foot"><button type="button" class="btn secondary" id="closeModal">Cancelar</button><button class="btn primary">Guardar participante</button></div></form></div></div>`;document.getElementById('closeModal').onclick=closeModal;document.getElementById('pImage').onchange=previewImage;document.getElementById('participantForm').onsubmit=saveParticipant}function previewImage(e){let file=e.target.files[0];if(!file)return;if(file.size>2*1024*1024){toast('La imagen debe pesar menos de 2 MB');return}let reader=new FileReader();reader.onload=()=>{pendingImage=reader.result;document.getElementById('imagePreview').innerHTML=`<img class="preview" src="${pendingImage}" alt="Vista previa">`};reader.readAsDataURL(file)}function saveParticipant(e){e.preventDefault();let t=current(),p=editingId?participant(editingId):{id:uid()};p.name=document.getElementById('pName').value.trim();p.course=document.getElementById('pCourse').value.trim();p.division=document.getElementById('pDivision').value.trim();p.club=document.getElementById('pClub').value.trim();p.number=document.getElementById('pNumber').value.trim();if(pendingImage)p.image=pendingImage;if(!editingId)t.participants.push(p);Object.keys(t.groups).forEach(g=>t.groups[g]=t.groups[g].filter(id=>id!==p.id));let group=document.getElementById('pGroup').value;if(group)t.groups[group].push(p.id);saveData();pendingImage='';closeModal();renderAdmin();toast('Participante guardado')}function deleteParticipant(id){if(!confirm('¿Eliminar este participante?'))return;let t=current();t.participants=t.participants.filter(p=>p.id!==id);Object.keys(t.groups).forEach(g=>t.groups[g]=t.groups[g].filter(x=>x!==id));t.groupMatches=t.groupMatches.filter(m=>m.a!==id&&m.b!==id);saveData();renderAdmin();toast('Participante eliminado')}function closeModal(){document.getElementById('modalRoot').innerHTML='';pendingImage='';editingId=null}function saveMatch(e){e.preventDefault();let t=current(),a=document.getElementById('matchA').value,b=document.getElementById('matchB').value;if(a===b){document.getElementById('matchError').textContent='Elegí dos equipos diferentes.';return}let phase=document.getElementById('matchPhase').value,m={id:uid(),a,b,ga:Number(document.getElementById('goalsA').value),gb:Number(document.getElementById('goalsB').value),status:'played',default:document.getElementById('defaultWin').checked},target=phase==='groups'?t.groupMatches:phase==='league'?t.leagueMatches:t.final.games;target.push(m);saveData();renderAdmin();toast('Resultado guardado y estadísticas actualizadas')}function toast(message){document.getElementById('toastRoot').innerHTML=`<div class="toast">${esc(message)}</div>`;setTimeout(()=>document.getElementById('toastRoot').innerHTML='',2800)}document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>show(b.dataset.view));document.querySelectorAll('[data-open-tournament]').forEach(b=>b.onclick=()=>{currentTournament=b.dataset.openTournament;publicPhase='groups';show('tournaments')});renderHome();
 </script>
 <script>
 const appRoot=document.querySelector('.app');
 let savedStudent=JSON.parse(sessionStorage.getItem('fc26-student')||'null');
 function openApp(role){document.querySelector('.entry-gate')?.remove();appRoot.classList.remove('entry-locked');document.body.classList.remove('student-session','admin-session');document.body.classList.add(role==='admin'?'admin-session':'student-session');document.getElementById('roleLabel').textContent=role==='admin'?'MODO ADMINISTRADOR':`ESTUDIANTE: ${savedStudent?.name||'ACCESO'}`}
-function makeEntryGate(){appRoot.classList.add('entry-locked');const gate=document.createElement('section');gate.className='entry-gate';gate.innerHTML=`<div class="entry-box"><div class="eyebrow">Promo 2026 · Acceso al campeonato</div><h1>Elegí tu<br><em>ingreso.</em></h1><p>El administrador gestiona participantes y resultados. El estudiante ingresa sus datos para consultar los torneos como visitante.</p><div class="entry-options"><button class="entry-option" id="studentChoice"><strong>Estudiante</strong><span>Ingresar nombre, curso y división para consultar el campeonato.</span></button><button class="entry-option" id="adminChoice"><strong>Administrador</strong><span>Acceso protegido para gestionar todo el torneo.</span></button></div><form class="entry-form" id="studentEntry"><h2>Datos del estudiante</h2><div class="field"><label>Nombre y apellido</label><input id="studentName" required placeholder="Ej. Juan Pérez"></div><div class="field"><label>Curso</label><input id="studentCourse" required placeholder="Ej. 6° Año"></div><div class="field"><label>División</label><input id="studentDivision" required placeholder="Ej. A"></div><div class="actions"><button class="btn primary">Entrar al campeonato</button><button type="button" class="btn secondary" id="backFromStudent">Volver</button></div><p class="entry-error" id="studentError"></p></form><form class="entry-form" id="adminEntry"><h2>Acceso administrador</h2><div class="field"><label>Usuario</label><input id="entryAdminUser" required autocomplete="username"></div><div class="field"><label>Contraseña</label><input id="entryAdminPass" type="password" required autocomplete="current-password"></div><div class="actions"><button class="btn primary">Entrar al panel</button><button type="button" class="btn secondary" id="backFromAdmin">Volver</button></div><p class="entry-error" id="adminEntryError"></p></form></div>`;document.body.prepend(gate);const options=gate.querySelector('.entry-options');const studentForm=gate.querySelector('#studentEntry');const adminForm=gate.querySelector('#adminEntry');gate.querySelector('#studentChoice').onclick=()=>{options.style.display='none';studentForm.classList.add('active')};gate.querySelector('#adminChoice').onclick=()=>{options.style.display='none';adminForm.classList.add('active')};gate.querySelector('#backFromStudent').onclick=()=>{studentForm.classList.remove('active');options.style.display='grid'};gate.querySelector('#backFromAdmin').onclick=()=>{adminForm.classList.remove('active');options.style.display='grid'};studentForm.onsubmit=event=>{event.preventDefault();const profile={name:studentName.value.trim(),course:studentCourse.value.trim(),division:studentDivision.value.trim()};if(!profile.name||!profile.course||!profile.division){studentError.textContent='Completá todos los datos para ingresar.';return}sessionStorage.setItem('fc26-student',JSON.stringify(profile));savedStudent=profile;openApp('student')};adminForm.onsubmit=event=>{event.preventDefault();if(entryAdminUser.value==='Felipe09'&&entryAdminPass.value==='Gabriel2008'){isAdmin=true;sessionStorage.setItem('fc26-admin','1');openApp('admin');renderAdmin()}else adminEntryError.textContent='Usuario o contraseña incorrectos.'}}
+function makeEntryGate(){appRoot.classList.add('entry-locked');const gate=document.createElement('section');gate.className='entry-gate';gate.innerHTML=`<div class="entry-box"><div class="eyebrow">Promo 2026 · Acceso al campeonato</div><h1>Elegí tu<br><em>ingreso.</em></h1><p>El administrador gestiona participantes y resultados. El estudiante ingresa sus datos para consultar los torneos como visitante.</p><div class="entry-options"><button class="entry-option" id="studentChoice"><strong>Estudiante</strong><span>Ingresar nombre, curso y división para consultar el campeonato.</span></button><button class="entry-option" id="adminChoice"><strong>Administrador</strong><span>Acceso protegido para gestionar todo el torneo.</span></button></div><form class="entry-form" id="studentEntry"><h2>Datos del estudiante</h2><div class="field"><label>Nombre y apellido</label><input id="studentName" required placeholder="Ej. Juan Pérez"></div><div class="field"><label>Curso</label><input id="studentCourse" required placeholder="Ej. 6° Año"></div><div class="field"><label>División</label><input id="studentDivision" required placeholder="Ej. A"></div><div class="actions"><button class="btn primary">Entrar al campeonato</button><button type="button" class="btn secondary" id="backFromStudent">Volver</button></div><p class="entry-error" id="studentError"></p></form><form class="entry-form" id="adminEntry"><h2>Acceso administrador</h2><div class="field"><label>Usuario</label><input id="entryAdminUser" required autocomplete="username"></div><div class="field"><label>Contraseña</label><input id="entryAdminPass" type="password" required autocomplete="current-password"></div><div class="actions"><button class="btn primary">Entrar al panel</button><button type="button" class="btn secondary" id="backFromAdmin">Volver</button></div><p class="entry-error" id="adminEntryError"></p></form></div>`;document.body.prepend(gate);const options=gate.querySelector('.entry-options');const studentForm=gate.querySelector('#studentEntry');const adminForm=gate.querySelector('#adminEntry');gate.querySelector('#studentChoice').onclick=()=>{options.style.display='none';studentForm.classList.add('active')};gate.querySelector('#adminChoice').onclick=()=>{options.style.display='none';adminForm.classList.add('active')};gate.querySelector('#backFromStudent').onclick=()=>{studentForm.classList.remove('active');options.style.display='grid'};gate.querySelector('#backFromAdmin').onclick=()=>{adminForm.classList.remove('active');options.style.display='grid'};studentForm.onsubmit=event=>{event.preventDefault();const profile={name:studentName.value.trim(),course:studentCourse.value.trim(),division:studentDivision.value.trim()};if(!profile.name||!profile.course||!profile.division){studentError.textContent='Completá todos los datos para ingresar.';return}sessionStorage.setItem('fc26-student',JSON.stringify(profile));savedStudent=profile;openApp('student')};adminForm.onsubmit=event=>{event.preventDefault();if(entryAdminUser.value==='Promo2026'&&entryAdminPass.value==='Jordana2026'){isAdmin=true;sessionStorage.setItem('fc26-admin','1');openApp('admin');renderAdmin()}else adminEntryError.textContent='Usuario o contraseña incorrectos.'}}
 if(isAdmin)openApp('admin');else if(savedStudent)openApp('student');else makeEntryGate();
-login=function(event){event.preventDefault();if(document.getElementById('loginUser').value==='Promo2026'&&document.getElementById('loginPass').value==='Jornada2026'){isAdmin=true;sessionStorage.setItem('fc26-admin','1');document.querySelector('[data-view="admin"]').classList.remove('hidden');adminSection='overview';renderAdmin()}else document.getElementById('loginError').textContent='Usuario o contraseña incorrectos.'};
+login=function(event){event.preventDefault();if(document.getElementById('loginUser').value==='Promo2026'&&document.getElementById('loginPass').value==='Jordana2026'){isAdmin=true;sessionStorage.setItem('fc26-admin','1');document.querySelector('[data-view="admin"]').classList.remove('hidden');adminSection='overview';renderAdmin()}else document.getElementById('loginError').textContent='Usuario o contraseña incorrectos.'};
 const adminNav=document.querySelector('[data-view="admin"]');
 if(!isAdmin)adminNav.classList.add('hidden');
 document.body.classList.add(isAdmin?'admin-view':'home-view');
@@ -42,14 +42,54 @@ if(location.hash==='#admin')show('admin');
 <script>
 const sportsHome=document.getElementById('homeView');
 if(sportsHome){
-	const sportsStyle=document.createElement('style');
-	 sportsStyle.textContent='.sports-section{margin:34px 0 18px}.sports-section>.panel-head{margin-bottom:14px}.sports-section h2{margin:5px 0 0;font:700 30px/1 "Barlow Condensed"}.sports-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:12px}.sport-card{aspect-ratio:1/1;padding:16px 10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;border:1px solid var(--line);border-radius:7px;background:rgba(20,36,61,.83);color:var(--paper);text-align:center;transition:transform .2s,border-color .2s,background .2s}.sport-card:hover{transform:translateY(-4px);border-color:var(--cyan);background:rgba(77,225,255,.1)}.sport-icon{font-size:clamp(30px,4vw,50px);line-height:1}.sport-card strong{font:700 clamp(14px,1.4vw,19px)/1.05 "Barlow Condensed";text-transform:uppercase}.sports-section .badge{align-self:flex-start}@media(max-width:1200px){.sports-grid{grid-template-columns:repeat(4,1fr)}}@media(max-width:700px){.sports-grid{grid-template-columns:repeat(2,1fr)}}@media(max-width:560px){.sports-section h2{font-size:26px}}';
-	document.head.appendChild(sportsStyle);
-	const hero=sportsHome.querySelector('.hero');
-	if(hero){
-		hero.insertAdjacentHTML('afterend','<div class="sports-section"><div class="panel-head"><div><div class="eyebrow">Disciplinas</div><h2>Elegí tu deporte</h2></div><span class="badge">7 opciones</span></div><div class="sports-grid"><button class="sport-card" data-sport="Fútbol masculino" type="button"><span class="sport-icon">⚽</span><strong>Fútbol<br>masculino</strong></button><button class="sport-card" data-sport="Fútbol femenino" type="button"><span class="sport-icon">⚽</span><strong>Fútbol<br>femenino</strong></button><button class="sport-card" data-sport="Vóley" type="button"><span class="sport-icon">🏐</span><strong>Vóley</strong></button><button class="sport-card" data-sport="Pata tenis" type="button"><span class="sport-icon">🦶</span><strong>Pata tenis</strong></button><button class="sport-card" data-sport="Truco" type="button"><span class="sport-icon">🃏</span><strong>Truco</strong></button><button class="sport-card" data-sport="FIFA" type="button"><span class="sport-icon">🎮</span><strong>FIFA</strong></button><button class="sport-card" data-sport="Ajedrez" type="button"><span class="sport-icon">♟</span><strong>Ajedrez</strong></button></div></div>');
-		document.querySelectorAll('.sport-card').forEach(card=>card.addEventListener('click',()=>{document.body.classList.remove('home-view');document.body.classList.add('tournaments-view');show('tournaments');document.getElementById('publicTitle').textContent=card.dataset.sport}));
-	}
+  const sportsStyle=document.createElement('style');
+  sportsStyle.textContent=`
+    .sports-section{margin-top:18px;padding-top:8px}
+    .sports-section .panel-head{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:14px}
+    .sports-section h2{margin:0;font:700 30px/1 "Barlow Condensed";text-transform:uppercase}
+    .sports-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:12px}
+    .sport-card{aspect-ratio:1/1;padding:16px 10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;border:1px solid var(--line);border-radius:7px;background:rgba(20,36,61,.83);color:var(--paper);text-align:center;transition:transform .2s,border-color .2s,background .2s}
+    .sport-card:hover{transform:translateY(-4px);border-color:var(--cyan);background:rgba(77,225,255,.1)}
+    .sport-icon{font-size:clamp(30px,4vw,50px);line-height:1}
+    .sport-card strong{font:700 clamp(14px,1.4vw,19px)/1.05 "Barlow Condensed";text-transform:uppercase}
+    .badge{display:inline-flex;align-items:center;justify-content:center;padding:6px 10px;border:1px solid var(--line);border-radius:999px;color:var(--cyan);font-size:11px;letter-spacing:1px;text-transform:uppercase;background:rgba(77,225,255,.08)}
+    @media (max-width: 1200px){.sports-grid{grid-template-columns:repeat(4,1fr)}}
+    @media (max-width: 700px){.sports-grid{grid-template-columns:repeat(2,1fr)}}
+  `;
+  document.head.appendChild(sportsStyle);
+  sportsHome.innerHTML=`
+    <div class="hero" style="min-height: 280px; display: grid; place-items: center; text-align: center;">
+      <h1 style="font-size: clamp(58px, 8vw, 110px); margin: 0;">La Promo2026<br><em>es la mejor</em></h1>
+      <span id="homeTeams" hidden></span><span id="homeMatches" hidden></span><span id="homeChampions" hidden></span>
+    </div>
+    <div class="sports-section">
+      <div class="panel-head">
+        <div>
+          <div class="eyebrow">Disciplinas</div>
+          <h2>Elegí tu deporte</h2>
+        </div>
+        <span class="badge">7 opciones</span>
+      </div>
+      <div class="sports-grid">
+        <button class="sport-card" data-sport="Fútbol masculino" type="button"><span class="sport-icon">⚽</span><strong>Fútbol<br>masculino</strong></button>
+        <button class="sport-card" data-sport="Fútbol femenino" type="button"><span class="sport-icon">⚽</span><strong>Fútbol<br>femenino</strong></button>
+        <button class="sport-card" data-sport="Vóley" type="button"><span class="sport-icon">🏐</span><strong>Vóley</strong></button>
+        <button class="sport-card" data-sport="Pata tenis" type="button"><span class="sport-icon">🦶</span><strong>Pata tenis</strong></button>
+        <button class="sport-card" data-sport="Truco" type="button"><span class="sport-icon">🃏</span><strong>Truco</strong></button>
+        <button class="sport-card" data-sport="FIFA" type="button"><span class="sport-icon">🎮</span><strong>FIFA</strong></button>
+        <button class="sport-card" data-sport="Ajedrez" type="button"><span class="sport-icon">♟</span><strong>Ajedrez</strong></button>
+      </div>
+    </div>
+  `;
+  document.querySelectorAll('.sport-card').forEach(card => {
+    card.addEventListener('click', () => {
+      selectedDivision = (sportCatalog[card.dataset.sport] || ['Única'])[0];
+      document.body.classList.remove('home-view');
+      document.body.classList.add('tournaments-view');
+      show('tournaments');
+      document.getElementById('publicTitle').textContent = card.dataset.sport;
+    });
+  });
 }
 </script>
 <script>
@@ -63,15 +103,15 @@ const visibleTextWalker=document.createTreeWalker(document.body,NodeFilter.SHOW_
 const visibleTextNodes=[];
 while(visibleTextWalker.nextNode())visibleTextNodes.push(visibleTextWalker.currentNode);
 visibleTextNodes.forEach(node=>{node.nodeValue=node.nodeValue.replaceAll('Torneo oficial · 2 vs 2','Campeonato oficial · Promo 2026').replaceAll('FIFA FC 26','Campeonato Promo 2026').replaceAll('FC 26','Promo 2026')});
-login=function(event){event.preventDefault();if(document.getElementById('loginUser').value==='Promo2026'&&document.getElementById('loginPass').value==='Jornada2026'){isAdmin=true;sessionStorage.setItem('fc26-admin','1');document.querySelector('[data-view="admin"]').classList.remove('hidden');adminSection='overview';renderAdmin()}else document.getElementById('loginError').textContent='Usuario o contraseña incorrectos.'};
+login=function(event){event.preventDefault();if(document.getElementById('loginUser').value==='Promo2026'&&document.getElementById('loginPass').value==='Jordana2026'){isAdmin=true;sessionStorage.setItem('fc26-admin','1');document.querySelector('[data-view="admin"]').classList.remove('hidden');adminSection='overview';renderAdmin()}else document.getElementById('loginError').textContent='Usuario o contraseña incorrectos.'};
 const updatedAdminForm=document.getElementById('adminEntry');
-if(updatedAdminForm)updatedAdminForm.onsubmit=event=>{event.preventDefault();if(document.getElementById('entryAdminUser').value==='Promo2026'&&document.getElementById('entryAdminPass').value==='Jornada2026'){isAdmin=true;sessionStorage.setItem('fc26-admin','1');openApp('admin')}else document.getElementById('adminEntryError').textContent='Usuario o contraseña incorrectos.'};
+if(updatedAdminForm)updatedAdminForm.onsubmit=event=>{event.preventDefault();if(document.getElementById('entryAdminUser').value==='Promo2026'&&document.getElementById('entryAdminPass').value==='Jordana2026'){isAdmin=true;sessionStorage.setItem('fc26-admin','1');openApp('admin')}else document.getElementById('adminEntryError').textContent='Usuario o contraseña incorrectos.'};
 let activeSport='FIFA';
 const originalPublicTabs=publicTabs;
 publicTabs=function(){if(activeSport==='FIFA')return originalPublicTabs();return`<div class="tabs"><button class="tab ${publicPhase==='league'?'active':''}" data-phase="league">Semifinal</button><button class="tab ${publicPhase==='final'?'active':''}" data-phase="final">Final</button></div>`};
 const originalRenderPublic=renderPublic;
 renderPublic=function(){originalRenderPublic();if(activeSport!=='FIFA')document.getElementById('publicTitle').textContent=activeSport};
-document.querySelectorAll('.sport-card').forEach(card=>card.addEventListener('click',()=>{activeSport=card.dataset.sport;publicPhase=activeSport==='FIFA'?'groups':'league';show('tournaments');document.getElementById('publicTitle').textContent=activeSport}));
+document.querySelectorAll('.sport-card').forEach(card=>card.addEventListener('click',()=>{activeSport=card.dataset.sport;selectedDivision=(sportCatalog[activeSport]||['Única'])[0];publicPhase=activeSport==='FIFA'?'groups':'league';show('tournaments');document.getElementById('publicTitle').textContent=activeSport}));
 document.querySelectorAll('[data-view="home"],[data-open-tournament]').forEach(button=>button.addEventListener('click',()=>{activeSport='FIFA'}));
 </script>
 <script>
@@ -82,10 +122,707 @@ const SPORT_KEY='promo2026-sports-v1';
 const sportCatalog={'Fútbol masculino':['1°-3° año','4°-6° año'],'Fútbol femenino':['1°-3° año','4°-6° año'],'Vóley':['Única'],'Pata tenis':['Única'],'Truco':['Única'],'FIFA':['Única'],'Ajedrez':['Única']};
 function loadSports(){try{return JSON.parse(localStorage.getItem(SPORT_KEY)||'{}')}catch{return {}}}
 let sportsData=loadSports(),selectedDivision=sportCatalog['Fútbol masculino'][0];
-function sportKey(){return `${activeSport} :: ${selectedDivision}`}function sportFixture(){const key=sportKey();return sportsData[key]||(sportsData[key]={qualified:[],matches:[]})}function saveSports(){localStorage.setItem(SPORT_KEY,JSON.stringify(sportsData))}
+function sportKey(){return `${activeSport} :: ${selectedDivision}`}
+function sportFixture(){const key=sportKey();if(!sportsData[key])sportsData[key]={teams:[],qualified:[],matches:[]};sportsData[key].teams=Array.isArray(sportsData[key].teams)?sportsData[key].teams:[];sportsData[key].qualified=Array.isArray(sportsData[key].qualified)?sportsData[key].qualified:[];sportsData[key].matches=Array.isArray(sportsData[key].matches)?sportsData[key].matches:[];return sportsData[key]}
+function saveSports(){localStorage.setItem(SPORT_KEY,JSON.stringify(sportsData))}
 function sportTabs(){const divisions=sportCatalog[activeSport]||['Única'];return `<div class="tabs sport-divisions">${divisions.map(d=>`<button class="tab ${d===selectedDivision?'active':''}" data-division="${esc(d)}">${esc(d)}</button>`).join('')}</div>`}
-function sportPublicContent(){const fixture=sportFixture();return `${sportTabs()}<div class="home-grid"><div class="panel"><div class="panel-head"><h2>Clasificados</h2><span class="badge">${fixture.qualified.length}</span></div>${fixture.qualified.length?`<ol class="qualifiers">${fixture.qualified.map(team=>`<li>${esc(team)}</li>`).join('')}</ol>`:'<p class="phase-note">Todavía no hay clasificados publicados.</p>'}</div><div class="panel"><div class="panel-head"><h2>Fixture</h2><span class="badge">${fixture.matches.length} partidos</span></div>${fixture.matches.length?fixture.matches.map((match,index)=>`<div class="match"><span class="match-round">${esc(match.round||`Partido ${index+1}`)}</span><strong>${esc(match.home||'A definir')}</strong><span class="match-score">${esc(match.score||'-')}</span><strong>${esc(match.away||'A definir')}</strong></div>`).join(''):'<p class="phase-note">El fixture todavía no fue cargado.</p>'}</div></div>`}
-function renderSport(){document.getElementById('publicContent').innerHTML=sportPublicContent();document.querySelectorAll('[data-division]').forEach(button=>button.onclick=()=>{selectedDivision=button.dataset.division;renderSport()})}const originalSportRender=renderPublic;renderPublic=function(){if(activeSport&&activeSport!=='FIFA'){renderSport();return}originalSportRender()};
-function sportAdmin(){const fixture=sportFixture();return `<div class="panel"><div class="panel-head"><div><div class="eyebrow">${esc(activeSport)}</div><h2>Fixture y clasificados</h2></div><span class="badge">${esc(selectedDivision)}</span></div>${sportTabs()}<form id="sportForm"><div class="field"><label>Clasificados, uno por línea</label><textarea id="sportQualified" rows="5">${esc(fixture.qualified.join('\n'))}</textarea></div><div class="field"><label>Fixture: ronda | local | visitante | resultado</label><textarea id="sportMatches" rows="6">${esc(fixture.matches.map(m=>[m.round,m.home,m.away,m.score].join(' | ')).join('\n'))}</textarea></div><button class="btn primary">Guardar cambios</button></form></div>`}function renderSportAdmin(){const target=document.getElementById('adminSectionContent');if(!target)return;target.innerHTML=sportAdmin();document.querySelectorAll('#adminSectionContent [data-division]').forEach(button=>button.onclick=()=>{selectedDivision=button.dataset.division;renderSportAdmin()});document.getElementById('sportForm').onsubmit=event=>{event.preventDefault();const fixture=sportFixture();fixture.qualified=document.getElementById('sportQualified').value.split('\n').map(v=>v.trim()).filter(Boolean);fixture.matches=document.getElementById('sportMatches').value.split('\n').map(line=>line.split('|').map(v=>v.trim())).filter(parts=>parts.filter(Boolean).length>=2).map(parts=>({round:parts[0],home:parts[1],away:parts[2]||'A definir',score:parts[3]||'-'}));saveSports();renderSportAdmin()}}const originalRenderAdmin=renderAdmin;renderAdmin=function(){originalRenderAdmin();if(isAdmin&&adminSection==='sports')renderSportAdmin()};document.addEventListener('click',event=>{if(event.target.closest('[data-admin="sports"]')){adminSection='sports';renderAdmin()}});const adminTabObserver=new MutationObserver(()=>{const tabs=document.querySelector('.tabs');if(tabs&&!tabs.querySelector('[data-admin="sports"]'))tabs.insertAdjacentHTML('beforeend','<button class="tab" data-admin="sports">Disciplinas</button>')});adminTabObserver.observe(document.body,{childList:true,subtree:true});
+function sportPublicContent(){const fixture=sportFixture();return `${sportTabs()}<div class="home-grid"><div class="panel"><div class="panel-head"><h2>Equipos</h2><span class="badge">${fixture.teams.length}</span></div>${fixture.teams.length?`<ol class="qualifiers">${fixture.teams.map(team=>`<li>${esc(team)}</li>`).join('')}</ol>`:'<p class="phase-note">Todavía no hay equipos publicados.</p>'}</div><div class="panel"><div class="panel-head"><h2>Clasificados</h2><span class="badge">${fixture.qualified.length}</span></div>${fixture.qualified.length?`<ol class="qualifiers">${fixture.qualified.map(team=>`<li>${esc(team)}</li>`).join('')}</ol>`:'<p class="phase-note">Todavía no hay clasificados publicados.</p>'}</div><div class="panel"><div class="panel-head"><h2>Fixture y resultados</h2><span class="badge">${fixture.matches.length} partidos</span></div>${fixture.matches.length?fixture.matches.map((match,index)=>`<div class="match"><span class="match-round">${esc(match.round||`Partido ${index+1}`)}</span><strong>${esc(match.home||'A definir')}</strong><span class="match-score">${esc(match.score||'-')}</span><strong>${esc(match.away||'A definir')}</strong></div>`).join(''):'<p class="phase-note">El fixture todavía no fue cargado.</p>'}</div></div>`}
+function renderSport(){document.getElementById('publicContent').innerHTML=sportPublicContent();document.querySelectorAll('[data-division]').forEach(button=>button.onclick=()=>{selectedDivision=button.dataset.division;renderSport()})}
+const originalSportRender=renderPublic;renderPublic=function(){if(activeSport&&activeSport!=='FIFA'){renderSport();return}originalSportRender()};
+function sportAdmin(){const fixture=sportFixture();return `<div class="panel"><div class="panel-head"><div><div class="eyebrow">${esc(activeSport)}</div><h2>Gestión del deporte</h2></div><span class="badge">${esc(selectedDivision)}</span></div>${sportTabs()}<form id="sportForm"><div class="field"><label>Equipos, uno por línea</label><textarea id="sportTeams" rows="6" placeholder="Nombre de la dupla o equipo">${esc(fixture.teams.join('\n'))}</textarea></div><div class="field"><label>Clasificados, uno por línea</label><textarea id="sportQualified" rows="5">${esc(fixture.qualified.join('\n'))}</textarea></div><div class="field"><label>Resultados: ronda | local | visitante | resultado</label><textarea id="sportMatches" rows="6" placeholder="Semifinal | Equipo A | Equipo B | 2-1">${esc(fixture.matches.map(m=>[m.round,m.home,m.away,m.score].join(' | ')).join('\n'))}</textarea></div><button class="btn primary">Guardar equipos y resultados</button></form></div>`}
+function renderSportAdmin(){const target=document.getElementById('adminSectionContent');if(!target)return;target.innerHTML=sportAdmin();document.querySelectorAll('#adminSectionContent [data-division]').forEach(button=>button.onclick=()=>{selectedDivision=button.dataset.division;renderSportAdmin()});document.getElementById('sportForm').onsubmit=event=>{event.preventDefault();const fixture=sportFixture();fixture.teams=document.getElementById('sportTeams').value.split('\n').map(v=>v.trim()).filter(Boolean);fixture.qualified=document.getElementById('sportQualified').value.split('\n').map(v=>v.trim()).filter(Boolean);fixture.matches=document.getElementById('sportMatches').value.split('\n').map(line=>line.split('|').map(v=>v.trim())).filter(parts=>parts.filter(Boolean).length>=2).map(parts=>({round:parts[0],home:parts[1],away:parts[2]||'A definir',score:parts[3]||'-'}));saveSports();renderSportAdmin()}}
+const originalRenderAdmin=renderAdmin;renderAdmin=function(){originalRenderAdmin();if(isAdmin&&adminSection==='sports')renderSportAdmin()};document.addEventListener('click',event=>{if(event.target.closest('[data-admin="sports"]')){adminSection='sports';renderAdmin()}});const adminTabObserver=new MutationObserver(()=>{const tabs=document.querySelector('#adminView .tabs');if(isAdmin&&tabs&&!tabs.querySelector('[data-admin="sports"]'))tabs.insertAdjacentHTML('beforeend','<button class="tab" data-admin="sports">Disciplinas</button>')});adminTabObserver.observe(document.body,{childList:true,subtree:true});
+</script>
+<script>
+(() => {
+  const FORMAT_KEY = 'fc26-competition-formats-v1';
+  const FORMAT_SPORT_KEY = 'fc26-current-format-sport';
+
+  function readJson(key, fallback) {
+    try {
+      const raw = localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : fallback;
+    } catch (error) {
+      return fallback;
+    }
+  }
+
+  function writeJson(key, value) {
+    localStorage.setItem(key, JSON.stringify(value));
+  }
+
+  function ensureArray(value) {
+    return Array.isArray(value) ? value : [];
+  }
+
+  function makePhaseConfig({ name = 'Nueva fase', type = 'groups', order = 1, status = 'proxima', participants = 4, qualifiedCount = 1, zoneCount = 1, zones = [], matches = [], rules = ['Puntos', 'Diferencia de goles', 'Goles a favor'], manualEdit = false } = {}) {
+    return {
+      id: uid(),
+      name,
+      type,
+      order,
+      status,
+      participants,
+      qualifiedCount,
+      zoneCount,
+      zones: ensureArray(zones).map((zone, idx) => ({
+        id: zone.id || `zone-${idx + 1}`,
+        name: zone.name || `Zona ${String.fromCharCode(65 + idx)}`,
+        participants: ensureArray(zone.participants),
+        qualifiedCount: Number(zone.qualifiedCount || qualifiedCount || 1),
+        qualified: ensureArray(zone.qualified)
+      })),
+      matches: ensureArray(matches),
+      rules: ensureArray(rules),
+      manualEdit
+    };
+  }
+
+  function buildDefaultFormat(sportName) {
+    const defaultName = sportName || 'Deporte';
+    if (sportName === 'FIFA') {
+      return {
+        sport: 'FIFA',
+        published: false,
+        phases: [
+          makePhaseConfig({
+            name: 'Fase 1 · Grupos',
+            type: 'groups',
+            order: 1,
+            status: 'en-curso',
+            participants: 0,
+            qualifiedCount: 1,
+            zoneCount: 3,
+            zones: [
+              { name: 'Zona A', participants: [], qualifiedCount: 1, qualified: [] },
+              { name: 'Zona B', participants: [], qualifiedCount: 1, qualified: [] },
+              { name: 'Zona C', participants: [], qualifiedCount: 1, qualified: [] }
+            ],
+            rules: ['Puntos', 'Diferencia de goles', 'Goles a favor']
+          }),
+          makePhaseConfig({
+            name: 'Fase 2 · Mini Liga',
+            type: 'knockout',
+            order: 2,
+            status: 'proxima',
+            participants: 3,
+            qualifiedCount: 2,
+            matches: [],
+            rules: ['Puntos', 'Diferencia de goles', 'Goles a favor']
+          }),
+          makePhaseConfig({
+            name: 'Final · Mejor de 3',
+            type: 'final',
+            order: 3,
+            status: 'proxima',
+            participants: 2,
+            qualifiedCount: 1,
+            matches: [],
+            rules: ['Puntos', 'Diferencia de goles', 'Goles a favor']
+          })
+        ],
+        rules: ['Puntos', 'Diferencia de goles', 'Goles a favor'],
+        manualEditable: true
+      };
+    }
+    return {
+      sport: defaultName,
+      published: false,
+      phases: [
+        makePhaseConfig({
+          name: 'Fase de grupos',
+          type: 'groups',
+          order: 1,
+          status: 'en-curso',
+          participants: 8,
+          qualifiedCount: 2,
+          zoneCount: 2,
+          zones: [
+            { name: 'Zona A', participants: ['Equipo 1', 'Equipo 2', 'Equipo 3', 'Equipo 4'], qualifiedCount: 2, qualified: ['Equipo 1', 'Equipo 2'] },
+            { name: 'Zona B', participants: ['Equipo 5', 'Equipo 6', 'Equipo 7', 'Equipo 8'], qualifiedCount: 2, qualified: ['Equipo 5', 'Equipo 6'] }
+          ],
+          rules: ['Puntos', 'Diferencia de goles', 'Goles a favor']
+        }),
+        makePhaseConfig({
+          name: 'Semifinales',
+          type: 'knockout',
+          order: 2,
+          status: 'proxima',
+          participants: 4,
+          qualifiedCount: 2,
+          matches: [
+            { home: '1° Zona A', away: '1° Zona B', score: '', winner: '' },
+            { home: '1° Zona C', away: 'Mejor segundo', score: '', winner: '' }
+          ],
+          rules: ['Puntos', 'Diferencia de goles', 'Goles a favor']
+        }),
+        makePhaseConfig({
+          name: 'Final',
+          type: 'final',
+          order: 3,
+          status: 'proxima',
+          participants: 2,
+          qualifiedCount: 1,
+          matches: [{ home: 'Ganador SF 1', away: 'Ganador SF 2', score: '', winner: '' }],
+          rules: ['Puntos', 'Diferencia de goles', 'Goles a favor']
+        })
+      ],
+      rules: ['Puntos', 'Diferencia de goles', 'Goles a favor'],
+      manualEditable: true
+    };
+  }
+
+  function buildFormatStore() {
+    const store = readJson(FORMAT_KEY, {});
+    const sportNames = Object.keys(sportCatalog || {});
+    if (!sportNames.length) return store;
+    sportNames.forEach((sportName) => {
+      if (!store[sportName]) {
+        store[sportName] = buildDefaultFormat(sportName);
+      }
+      if (sportName === 'FIFA' && store[sportName].published !== true) {
+        store[sportName] = buildDefaultFormat('FIFA');
+      }
+    });
+    writeJson(FORMAT_KEY, store);
+    return store;
+  }
+
+  function getFormatStore() {
+    return buildFormatStore();
+  }
+
+  function getCurrentFormatSport() {
+    const store = getFormatStore();
+    const sportNames = Object.keys(store || {});
+    const selected = localStorage.getItem(FORMAT_SPORT_KEY) || sportNames[0] || Object.keys(sportCatalog || {})[0];
+    if (store[selected]) return selected;
+    return sportNames[0] || Object.keys(sportCatalog || {})[0];
+  }
+
+  function getSportFormat(sportName) {
+    const store = getFormatStore();
+    if (!store[sportName]) {
+      store[sportName] = buildDefaultFormat(sportName);
+      writeJson(FORMAT_KEY, store);
+    }
+    return store[sportName];
+  }
+
+  function saveSportFormat(sportName, formatConfig) {
+    const store = getFormatStore();
+    store[sportName] = { ...formatConfig, published: true };
+    writeJson(FORMAT_KEY, store);
+  }
+
+  function sortPhases(phases) {
+    return ensureArray(phases).slice().sort((a, b) => Number(a.order || 0) - Number(b.order || 0));
+  }
+
+  function parseZoneInput(value, defaultZoneCount) {
+    const lines = String(value || '').split(/\n|;/).map((line) => line.trim()).filter(Boolean);
+    if (!lines.length) {
+      return Array.from({ length: Number(defaultZoneCount || 1) }, (_, index) => ({
+        name: `Zona ${String.fromCharCode(65 + index)}`,
+        participants: [],
+        qualifiedCount: 1,
+        qualified: []
+      }));
+    }
+    return lines.map((line, index) => {
+      const zoneLabel = line.includes(':') ? line.split(':')[0].trim() : `Zona ${String.fromCharCode(65 + index)}`;
+      const members = line.includes(':') ? line.split(':').slice(1).join(':').split(',').map(part => part.trim()).filter(Boolean) : line.split(',').map(part => part.trim()).filter(Boolean);
+      return {
+        id: `zone-${index + 1}`,
+        name: zoneLabel || `Zona ${String.fromCharCode(65 + index)}`,
+        participants: members,
+        qualified: members.slice(0, 1),
+        qualifiedCount: Math.min(1, Math.max(1, members.length))
+      };
+    });
+  }
+
+  function parseMatchInput(value) {
+    return String(value || '').split(/\n|;/).map((line) => line.trim()).filter(Boolean).map((line) => {
+      if (!line.includes('vs') && !line.includes('VS')) {
+        const parts = line.split('|').map((part) => part.trim()).filter(Boolean);
+        if (parts.length >= 2) return { home: parts[0], away: parts[1], score: parts[2] || '', winner: parts[3] || '' };
+        return { home: line, away: '', score: '', winner: '' };
+      }
+      const normalized = line.replace(/\s+vs\s+/i, ' | ');
+      const parts = normalized.split('|').map((part) => part.trim()).filter(Boolean);
+      return { home: parts[0] || '', away: parts[1] || '', score: parts[2] || '', winner: parts[3] || '' };
+    });
+  }
+
+  function formatPhaseForPublic(phase) {
+    const phaseOrder = Number(phase.order || 0);
+    if (phase.type === 'groups') {
+      const zones = ensureArray(phase.zones).length ? phase.zones : [{ name: 'Zona A', participants: [], qualifiedCount: 1, qualified: [] }];
+      const listMarkup = zones.map((zone) => {
+        const participants = ensureArray(zone.participants).length ? zone.participants : ['Sin participantes'];
+        const qualified = ensureArray(zone.qualified).length ? zone.qualified : ['Sin clasificados'];
+        return `
+          <div class="format-zone-panel">
+            <h4>${esc(zone.name || 'Zona')}</h4>
+            <div class="format-zone-list">${participants.map((team) => `<span>${esc(team)}</span>`).join('')}</div>
+            <div class="format-zone-qualifiers"><strong>Clasificados:</strong> ${qualified.map((team) => `<span>${esc(team)}</span>`).join(', ') || '—'}</div>
+          </div>
+        `;
+      }).join('');
+      return `
+        <div class="panel format-phase-card" data-phase-order="${phaseOrder}">
+          <div class="panel-head"><div><div class="eyebrow">Fase ${phaseOrder}</div><h3>${esc(phase.name || 'Fase')}</h3></div><span class="badge">${esc(phase.type || 'groups')}</span></div>
+          <div class="format-zone-grid">${listMarkup}</div>
+        </div>
+      `;
+    }
+
+    if (phase.type === 'knockout' || phase.type === 'final') {
+      const matches = ensureArray(phase.matches);
+      if (!matches.length) {
+        return `
+          <div class="panel format-phase-card" data-phase-order="${phaseOrder}">
+            <div class="panel-head"><div><div class="eyebrow">Fase ${phaseOrder}</div><h3>${esc(phase.name || 'Eliminatoria')}</h3></div><span class="badge">${esc(phase.type || 'knockout')}</span></div>
+            <p class="phase-note">Todavía no hay partidos cargados.</p>
+          </div>
+        `;
+      }
+      const matchMarkup = matches.map((match) => `
+        <div class="format-match-row">
+          <span>${esc(match.home || 'Equipo A')}</span>
+          <b>${esc(match.score || '—')}</b>
+          <span>${esc(match.away || 'Equipo B')}</span>
+          ${match.winner ? `<em>→ ${esc(match.winner)}</em>` : ''}
+        </div>
+      `).join('');
+      return `
+        <div class="panel format-phase-card" data-phase-order="${phaseOrder}">
+          <div class="panel-head"><div><div class="eyebrow">Fase ${phaseOrder}</div><h3>${esc(phase.name || 'Eliminatoria')}</h3></div><span class="badge">${esc(phase.type || 'knockout')}</span></div>
+          <div class="format-knockout">${matchMarkup}</div>
+        </div>
+      `;
+    }
+
+    return `
+      <div class="panel format-phase-card" data-phase-order="${phaseOrder}">
+        <div class="panel-head"><div><div class="eyebrow">Fase ${phaseOrder}</div><h3>${esc(phase.name || 'Fase personalizada')}</h3></div><span class="badge">${esc(phase.type || 'custom')}</span></div>
+        <p class="phase-note">Configuración personalizada disponible en el panel de administración.</p>
+      </div>
+    `;
+  }
+
+  function renderCompetitionPublic(sportName) {
+    const format = getSportFormat(sportName);
+    if (!format.published) {
+      return `
+        <div class="panel">
+          <div class="panel-head"><div><div class="eyebrow">${esc(sportName)}</div><h2>Información pendiente</h2></div><span class="badge">Próximamente</span></div>
+          <p class="phase-note">El administrador todavía no publicó información para este deporte.</p>
+        </div>
+      `;
+    }
+    const phases = sortPhases(format.phases || []);
+    if (!phases.length) {
+      return `
+        <div class="panel">
+          <div class="panel-head"><div><div class="eyebrow">Formato</div><h2>${esc(sportName)}</h2></div><span class="badge">Sin formato</span></div>
+          <p class="phase-note">El administrador aún no configuró el formato de competencia para este deporte.</p>
+        </div>
+      `;
+    }
+    return `<div class="format-public-wrap">${phases.map((phase) => formatPhaseForPublic(phase)).join('')}</div>`;
+  }
+
+  function buildPhaseEditor(phase, index) {
+    const groupControls = phase.type === 'groups' ? `
+      <div class="field">
+        <label>Cantidad de zonas</label>
+        <input data-phase-field="zoneCount" value="${Number(phase.zoneCount || phase.zones?.length || 1)}" type="number" min="1">
+      </div>
+      <div class="field full">
+        <label>Zonas (una por línea: Nombre: Equipo 1, Equipo 2, Equipo 3)</label>
+        <textarea data-phase-field="zones" rows="5">${esc(ensureArray(phase.zones).length ? phase.zones.map((zone) => `${zone.name || 'Zona'}: ${ensureArray(zone.participants).join(', ')}`).join('\n') : 'Zona A: Equipo 1, Equipo 2, Equipo 3, Equipo 4\nZona B: Equipo 5, Equipo 6, Equipo 7, Equipo 8')}</textarea>
+      </div>
+    ` : !['knockout', 'final'].includes(phase.type) ? `
+      <div class="field full">
+        <label>Detalles de la fase</label>
+        <textarea data-phase-field="custom" rows="4">${esc((phase.details || '').toString())}</textarea>
+      </div>
+    ` : `
+      <div class="field full">
+        <label>Cruces / partidos (una línea por partido)</label>
+        <textarea data-phase-field="matches" rows="4">${esc(ensureArray(phase.matches).map((match) => `${match.home || ''} vs ${match.away || ''} | ${match.score || ''} | ${match.winner || ''}`).join('\n'))}</textarea>
+      </div>
+    `;
+
+    return `
+      <div class="panel format-phase-editor" data-phase-index="${index}">
+        <div class="form-grid">
+          <div class="field"><label>Nombre</label><input data-phase-field="name" value="${esc(phase.name || `Fase ${index + 1}`)}"></div>
+          <div class="field"><label>Tipo</label><select data-phase-field="type"><option value="groups" ${phase.type === 'groups' ? 'selected' : ''}>Fase de grupos</option><option value="knockout" ${phase.type === 'knockout' ? 'selected' : ''}>Eliminación directa</option><option value="final" ${phase.type === 'final' ? 'selected' : ''}>Final</option><option value="custom" ${phase.type === 'custom' ? 'selected' : ''}>Personalizada</option></select></div>
+          <div class="field"><label>Estado</label><select data-phase-field="status"><option value="proxima" ${phase.status === 'proxima' ? 'selected' : ''}>Próxima</option><option value="preparacion" ${phase.status === 'preparacion' ? 'selected' : ''}>En preparación</option><option value="en-curso" ${phase.status === 'en-curso' ? 'selected' : ''}>En curso</option><option value="finalizada" ${phase.status === 'finalizada' ? 'selected' : ''}>Finalizada</option></select></div>
+          <div class="field"><label>Participantes</label><input data-phase-field="participants" type="number" min="0" value="${Number(phase.participants || 0)}"></div>
+          <div class="field"><label>Clasificados</label><input data-phase-field="qualifiedCount" type="number" min="0" value="${Number(phase.qualifiedCount || 0)}"></div>
+          <div class="field"><label>Orden</label><input data-phase-field="order" type="number" min="1" value="${Number(phase.order || index + 1)}"></div>
+        </div>
+        ${groupControls}
+        <div class="small-actions" style="margin-top:16px">
+          <button type="button" class="btn secondary" data-phase-action="up">↑ Subir</button>
+          <button type="button" class="btn secondary" data-phase-action="down">↓ Bajar</button>
+          <button type="button" class="btn danger" data-phase-action="delete">🗑 Eliminar</button>
+        </div>
+      </div>
+    `;
+  }
+
+  function adminFormatsView() {
+    const store = getFormatStore();
+    const sportNames = Object.keys(sportCatalog || {});
+    const selectedSport = getCurrentFormatSport();
+    const format = store[selectedSport] || buildDefaultFormat(selectedSport);
+    const phases = sortPhases(format.phases || []).map((phase, index) => buildPhaseEditor(phase, index)).join('');
+
+    return `
+      <div class="panel">
+        <div class="panel-head">
+          <div><div class="eyebrow">Configuración del formato</div><h2>Formato de competencia</h2></div>
+          <span class="badge">${esc(selectedSport)}</span>
+        </div>
+        <div class="form-grid">
+          <div class="field"><label>Deporte</label><select id="formatSportSelect">${sportNames.map((sportName) => `<option value="${esc(sportName)}" ${sportName === selectedSport ? 'selected' : ''}>${esc(sportName)}</option>`).join('')}</select></div>
+          <div class="field"><label>Reglas de clasificación</label><input id="formatRulesInput" value="${esc((format.rules || ['Puntos', 'Diferencia de goles', 'Goles a favor']).join(', '))}"></div>
+        </div>
+        <div class="actions" style="margin-top:16px">
+          <button type="button" class="btn primary" id="addFormatPhaseBtn">+ Agregar fase</button>
+          <button type="button" class="btn secondary" id="saveFormatBtn">Guardar formato</button>
+        </div>
+        ${selectedSport === 'FIFA' ? `<div class="actions" style="margin-top:12px"><button type="button" class="btn secondary" data-fifa-admin="participants" data-fifa-tournament="t1">Gestionar Torneo 1</button><button type="button" class="btn secondary" data-fifa-admin="participants" data-fifa-tournament="t2">Gestionar Torneo 2</button><button type="button" class="btn secondary" data-fifa-admin="matches" data-fifa-tournament="t1">Resultados Torneo 1</button><button type="button" class="btn secondary" data-fifa-admin="matches" data-fifa-tournament="t2">Resultados Torneo 2</button></div>` : ''}
+        <div id="formatPhasesList" style="margin-top:18px;display:grid;gap:16px">${phases || '<p class="phase-note">Todavía no hay fases configuradas.</p>'}</div>
+      </div>
+    `;
+  }
+
+  function bindFormatAdmin() {
+    const target = document.getElementById('adminSectionContent');
+    if (!target) return;
+
+    const sportSelect = document.getElementById('formatSportSelect');
+    if (sportSelect) {
+      sportSelect.onchange = (event) => {
+        localStorage.setItem(FORMAT_SPORT_KEY, event.target.value);
+        adminSection = 'formats';
+        renderAdmin();
+      };
+    }
+
+    const addBtn = document.getElementById('addFormatPhaseBtn');
+    if (addBtn) {
+      addBtn.onclick = () => {
+        const sportName = localStorage.getItem(FORMAT_SPORT_KEY) || getCurrentFormatSport();
+        const current = getSportFormat(sportName);
+        current.phases = ensureArray(current.phases);
+        current.phases.push(makePhaseConfig({
+          name: `Nueva fase ${current.phases.length + 1}`,
+          type: 'groups',
+          order: current.phases.length + 1,
+          status: 'proxima',
+          participants: 4,
+          qualifiedCount: 1,
+          zoneCount: 1,
+          zones: [{ name: 'Zona A', participants: ['Equipo 1', 'Equipo 2', 'Equipo 3', 'Equipo 4'], qualifiedCount: 1, qualified: ['Equipo 1'] }],
+          matches: [],
+          rules: current.rules || ['Puntos', 'Diferencia de goles', 'Goles a favor']
+        }));
+        saveSportFormat(sportName, current);
+        renderAdmin();
+      };
+    }
+
+    const saveBtn = document.getElementById('saveFormatBtn');
+    if (saveBtn) {
+      saveBtn.onclick = () => {
+        const sportName = document.getElementById('formatSportSelect')?.value || getCurrentFormatSport();
+        const format = getSportFormat(sportName);
+        const phaseCards = [...target.querySelectorAll('.format-phase-editor')];
+
+        format.rules = String(document.getElementById('formatRulesInput')?.value || '').split(',').map((value) => value.trim()).filter(Boolean) || ['Puntos', 'Diferencia de goles', 'Goles a favor'];
+        format.phases = phaseCards.map((card, index) => {
+          const name = card.querySelector('[data-phase-field="name"]')?.value || `Fase ${index + 1}`;
+          const type = card.querySelector('[data-phase-field="type"]')?.value || 'groups';
+          const status = card.querySelector('[data-phase-field="status"]')?.value || 'proxima';
+          const participants = Number(card.querySelector('[data-phase-field="participants"]')?.value || 0);
+          const qualifiedCount = Number(card.querySelector('[data-phase-field="qualifiedCount"]')?.value || 0);
+          const order = Number(card.querySelector('[data-phase-field="order"]')?.value || index + 1);
+          const zoneCount = Number(card.querySelector('[data-phase-field="zoneCount"]')?.value || 1);
+          const zonesValue = card.querySelector('[data-phase-field="zones"]')?.value || '';
+          const matchesValue = card.querySelector('[data-phase-field="matches"]')?.value || '';
+          const customValue = card.querySelector('[data-phase-field="custom"]')?.value || '';
+
+          return makePhaseConfig({
+            name,
+            type,
+            order,
+            status,
+            participants,
+            qualifiedCount,
+            zoneCount,
+            zones: type === 'groups' ? parseZoneInput(zonesValue, zoneCount) : [],
+            matches: type === 'groups' ? [] : parseMatchInput(matchesValue),
+            rules: format.rules,
+            manualEdit: true,
+            details: customValue
+          });
+        });
+
+        saveSportFormat(sportName, format);
+        renderAdmin();
+      };
+    }
+
+    target.querySelectorAll('[data-phase-action]').forEach((button) => {
+      button.onclick = () => {
+        const sportName = document.getElementById('formatSportSelect')?.value || getCurrentFormatSport();
+        const format = getSportFormat(sportName);
+        const phaseIndex = Number(button.closest('.format-phase-editor')?.dataset.phaseIndex);
+        const action = button.dataset.phaseAction;
+
+        if (Number.isNaN(phaseIndex)) return;
+        const phases = sortPhases(format.phases || []);
+        if (action === 'delete') {
+          phases.splice(phaseIndex, 1);
+          format.phases = phases.map((phase, index) => ({ ...phase, order: index + 1 }));
+        }
+        if (action === 'up' && phaseIndex > 0) {
+          const temp = phases[phaseIndex];
+          phases[phaseIndex] = phases[phaseIndex - 1];
+          phases[phaseIndex - 1] = temp;
+          format.phases = phases.map((phase, index) => ({ ...phase, order: index + 1 }));
+        }
+        if (action === 'down' && phaseIndex < phases.length - 1) {
+          const temp = phases[phaseIndex];
+          phases[phaseIndex] = phases[phaseIndex + 1];
+          phases[phaseIndex + 1] = temp;
+          format.phases = phases.map((phase, index) => ({ ...phase, order: index + 1 }));
+        }
+
+        saveSportFormat(sportName, format);
+        renderAdmin();
+      };
+    });
+
+    target.querySelectorAll('[data-fifa-admin]').forEach((button) => {
+      button.onclick = () => {
+        currentTournament = button.dataset.fifaTournament;
+        target.innerHTML = button.dataset.fifaAdmin === 'participants' ? adminParticipants() : adminMatches();
+        bindAdmin();
+      };
+    });
+  }
+
+  const originalRenderAdmin = renderAdmin;
+  renderAdmin = function () {
+    if (adminSection === 'participants') adminSection = 'overview';
+    originalRenderAdmin();
+    if (!isAdmin) return;
+    const tabs = document.querySelector('.tabs');
+    tabs?.querySelector('[data-admin="participants"]')?.remove();
+    if (tabs && !tabs.querySelector('[data-admin="formats"]')) {
+      tabs.insertAdjacentHTML('beforeend', '<button class="tab" data-admin="formats">Formatos</button>');
+    }
+    const currentTabs = document.querySelectorAll('[data-admin]');
+    currentTabs.forEach((tab) => {
+      tab.onclick = () => {
+        adminSection = tab.dataset.admin;
+        if (adminSection === 'formats') {
+          localStorage.setItem(FORMAT_SPORT_KEY, document.getElementById('formatSportSelect')?.value || getCurrentFormatSport());
+        }
+        renderAdmin();
+      };
+    });
+
+    if (adminSection === 'formats') {
+      const target = document.getElementById('adminSectionContent');
+      if (target) {
+        target.innerHTML = adminFormatsView();
+        bindFormatAdmin();
+      }
+    }
+  };
+
+  const originalRenderPublic = renderPublic;
+  function renderFifaPublic() {
+    const tournament = current();
+    const phaseContent = publicPhase === 'groups' ? renderGroups(tournament) : publicPhase === 'league' ? renderLeague(tournament) : renderFinal(tournament);
+    return `<div class="tabs"><button class="tab ${currentTournament === 't1' ? 'active' : ''}" data-tourney="t1">Torneo 1 · 1° a 3°</button><button class="tab ${currentTournament === 't2' ? 'active' : ''}" data-tourney="t2">Torneo 2 · 4° a 6°</button></div>${publicTabs()}<div id="publicPhaseContent">${phaseContent}</div>`;
+  }
+
+  renderPublic = function () {
+    if (activeSport) {
+      const content = document.getElementById('publicContent');
+      if (content) {
+        const format = getSportFormat(activeSport);
+        content.innerHTML = activeSport === 'FIFA' && format.published ? renderFifaPublic() : renderCompetitionPublic(activeSport);
+        if (activeSport === 'FIFA' && format.published) bindPublic();
+      }
+      return;
+    }
+    originalRenderPublic();
+  };
+
+  const originalSportRender = renderSport;
+  renderSport = function () {
+    const content = document.getElementById('publicContent');
+    if (content && activeSport) {
+      const format = getSportFormat(activeSport);
+      content.innerHTML = activeSport === 'FIFA' && format.published ? renderFifaPublic() : renderCompetitionPublic(activeSport);
+      if (activeSport === 'FIFA' && format.published) bindPublic();
+      return;
+    }
+    if (originalSportRender) originalSportRender();
+  };
+
+  const originalSportAdmin = sportAdmin;
+  sportAdmin = function () {
+    return originalSportAdmin ? originalSportAdmin() : '';
+  };
+
+  document.addEventListener('click', (event) => {
+    const formatTab = event.target.closest('[data-admin="formats"]');
+    if (formatTab) {
+      adminSection = 'formats';
+      renderAdmin();
+    }
+  });
+
+  getFormatStore();
+})();
+</script>
+<script>
+(() => {
+  let fifaAdminMode = 'dashboard';
+  let fifaAdminTournament = 't1';
+  const baseRenderAdmin = renderAdmin;
+
+  function fifaAdminDashboard() {
+    return `<div class="panel">
+      <div class="panel-head"><div><div class="eyebrow">Gestión exclusiva de FIFA</div><h2>Campeonato FIFA FC 26</h2></div><span class="badge">Solo administrador</span></div>
+      <p class="phase-note">Seleccioná un torneo para administrar sus duplas, tablas, imágenes y resultados.</p>
+      <div class="tournament-grid">
+        <div class="panel"><div class="panel-head"><h3>Torneo 1</h3><span class="badge">1° a 3° año</span></div><div class="actions"><button class="btn primary" data-fifa-admin-mode="participants" data-fifa-tournament="t1">Participantes y tablas</button><button class="btn secondary" data-fifa-admin-mode="matches" data-fifa-tournament="t1">Resultados</button></div></div>
+        <div class="panel"><div class="panel-head"><h3>Torneo 2</h3><span class="badge">4° a 6° año</span></div><div class="actions"><button class="btn primary" data-fifa-admin-mode="participants" data-fifa-tournament="t2">Participantes y tablas</button><button class="btn secondary" data-fifa-admin-mode="matches" data-fifa-tournament="t2">Resultados</button></div></div>
+      </div>
+      <div class="actions" style="margin-top:18px"><button class="btn secondary" data-fifa-admin-mode="formats">Configurar fases FIFA</button></div>
+    </div>`;
+  }
+
+  function fifaAdminBackButton() {
+    return '<div class="actions" style="margin-bottom:16px"><button type="button" class="btn secondary" data-fifa-admin-mode="dashboard">← Gestión FIFA</button></div>';
+  }
+
+  function renderFifaAdminMode() {
+    baseRenderAdmin();
+    if (!isAdmin) return;
+    const tabs = document.querySelector('#adminView .tabs');
+    if (tabs && !tabs.querySelector('[data-admin="fifaManage"]')) {
+      tabs.insertAdjacentHTML('beforeend', '<button class="tab" data-admin="fifaManage">FIFA</button>');
+    }
+    if (fifaAdminMode === 'formats') {
+      adminSection = 'formats';
+      baseRenderAdmin();
+      return;
+    }
+    const target = document.getElementById('adminSectionContent');
+    if (!target) return;
+    if (fifaAdminMode === 'dashboard') target.innerHTML = fifaAdminDashboard();
+    if (fifaAdminMode === 'participants') {
+      currentTournament = fifaAdminTournament;
+      target.innerHTML = fifaAdminBackButton() + adminParticipants();
+      bindAdmin();
+    }
+    if (fifaAdminMode === 'matches') {
+      currentTournament = fifaAdminTournament;
+      target.innerHTML = fifaAdminBackButton() + adminMatches();
+      bindAdmin();
+    }
+    target.querySelectorAll('[data-fifa-admin-mode]').forEach(button => {
+      button.onclick = () => {
+        fifaAdminMode = button.dataset.fifaAdminMode;
+        fifaAdminTournament = button.dataset.fifaTournament || fifaAdminTournament;
+        if (fifaAdminMode === 'formats') {
+          adminSection = 'formats';
+          localStorage.setItem('fc26-current-format-sport', 'FIFA');
+        } else {
+          adminSection = 'overview';
+        }
+        renderAdmin();
+      };
+    });
+  }
+
+  renderAdmin = function () {
+    if (isAdmin && (adminSection === 'fifaManage' || fifaAdminMode !== 'dashboard')) {
+      if (adminSection === 'fifaManage') adminSection = 'overview';
+      renderFifaAdminMode();
+      return;
+    }
+    baseRenderAdmin();
+    if (isAdmin) {
+      const tabs = document.querySelector('#adminView .tabs');
+      if (tabs && !tabs.querySelector('[data-admin="fifaManage"]')) {
+        tabs.insertAdjacentHTML('beforeend', '<button class="tab" data-admin="fifaManage">FIFA</button>');
+      }
+      tabs?.querySelectorAll('[data-admin]:not([data-admin="fifaManage"])').forEach(tab => {
+        tab.onclick = () => {
+          fifaAdminMode = 'dashboard';
+          adminSection = tab.dataset.admin;
+          renderAdmin();
+        };
+      });
+    }
+  };
+
+  document.addEventListener('click', event => {
+    const fifaTab = event.target.closest('[data-admin="fifaManage"]');
+    if (fifaTab) {
+      fifaAdminMode = 'dashboard';
+      adminSection = 'fifaManage';
+      renderAdmin();
+    }
+  }, true);
+  document.addEventListener('click', event => {
+    const generalTab = event.target.closest('#adminView [data-admin]:not([data-admin="fifaManage"])');
+    if (generalTab) fifaAdminMode = 'dashboard';
+  }, true);
+})();
+</script>
+<script>
+(() => {
+  const baseRenderSportAdmin = renderSportAdmin;
+
+  renderSportAdmin = function () {
+    const editableSports = Object.keys(sportCatalog).filter(sport => sport !== 'FIFA');
+    if (activeSport === 'FIFA') {
+      activeSport = editableSports[0] || 'Fútbol masculino';
+      selectedDivision = (sportCatalog[activeSport] || ['Única'])[0];
+    }
+    baseRenderSportAdmin();
+    if (!isAdmin) return;
+    const target = document.getElementById('adminSectionContent');
+    if (!target || target.querySelector('#sportAdminSelect')) return;
+    const panelHead = target.querySelector('.panel-head');
+    if (!panelHead) return;
+    const selector = document.createElement('div');
+    selector.className = 'field';
+    selector.style.marginBottom = '16px';
+    selector.innerHTML = `<label>Deporte</label><select id="sportAdminSelect">${editableSports.map(sport => `<option value="${esc(sport)}" ${sport === activeSport ? 'selected' : ''}>${esc(sport)}</option>`).join('')}</select>`;
+    panelHead.insertAdjacentElement('afterend', selector);
+    document.getElementById('sportAdminSelect').onchange = event => {
+      activeSport = event.target.value;
+      selectedDivision = (sportCatalog[activeSport] || ['Única'])[0];
+      renderSportAdmin();
+    };
+  };
+})();
 </script>
 </body></html>
